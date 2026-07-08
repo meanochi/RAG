@@ -1,0 +1,18 @@
+# secrets — never commit real API keys
+.env
+!.env.example
+
+# Python
+__pycache__/
+*.pyc
+*.egg-info/
+.pytest_cache/
+
+# virtualenvs
+.venv/
+venv/
+
+# generated at runtime — rebuilt by extract.py, not source
+rag/data/
+rag/.env
+rag/.env.example

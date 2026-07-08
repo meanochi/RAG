@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>תרשים זרימה — RAG Workflow מונחה-אירועים</title>
+<style>
+  :root {
+    --bg: #faf7f2; --ink: #2b2530; --muted: #7a6f80;
+    --step: #fdeee7; --step-border: #e07a5f;
+    --event: #efe6f4; --event-border: #be95c4;
+    --stop: #e7f0e7; --stop-border: #6a9a6a;
+    --warn: #fdf3d7; --warn-border: #d4a017;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #1e1a22; --ink: #f0eaf2; --muted: #a89bb0;
+      --step: #3a2a26; --step-border: #e07a5f;
+      --event: #322a38; --event-border: #be95c4;
+      --stop: #24301f; --stop-border: #7fb37f;
+      --warn: #37301c; --warn-border: #d4a017;
+    }
+  }
+  body { background: var(--bg); color: var(--ink); font-family: system-ui, sans-serif;
+         margin: 0; padding: 2rem 1rem; }
+  h1 { text-align: center; font-size: 1.4rem; font-weight: 600; }
+  p.sub { text-align: center; color: var(--muted); max-width: 46rem; margin: .5rem auto 1.5rem; }
+  .wrap { max-width: 1060px; margin: 0 auto; overflow-x: auto; }
+  svg { display: block; margin: 0 auto; min-width: 900px; }
+  .step  { fill: var(--step);  stroke: var(--step-border);  stroke-width: 2; rx: 12; }
+  .stop  { fill: var(--stop);  stroke: var(--stop-border);  stroke-width: 2; }
+  .startshape { fill: var(--event); stroke: var(--event-border); stroke-width: 2; }
+  .label { font: 600 15px system-ui, sans-serif; fill: var(--ink); text-anchor: middle; }
+  .small { font: 12px system-ui, sans-serif; fill: var(--muted); text-anchor: middle; }
+  .event { font: italic 12.5px ui-monospace, monospace; fill: var(--event-border); text-anchor: middle; }
+  .cond  { font: 12px system-ui, sans-serif; fill: var(--warn-border); text-anchor: middle; }
+  .edge  { stroke: var(--muted); stroke-width: 1.8; fill: none; marker-end: url(#arrow); }
+  .edge.retry { stroke: var(--warn-border); stroke-dasharray: 5 4; }
+  .legend { display: flex; gap: 1.2rem; justify-content: center; flex-wrap: wrap;
+            margin-top: 1rem; font-size: .85rem; color: var(--muted); }
+  .chip { display: inline-block; width: .85em; height: .85em; border-radius: 3px;
+          margin-inline-end: .35em; vertical-align: -.08em; border: 2px solid; }
+</style>
+</head>
+<body>
+<h1>🧠 RAG Workflow מונחה-אירועים — תיעוד כלי Agentic Coding</h1>
+<p class="sub">כל מלבן הוא Step ב-Workflow של LlamaIndex. החיצים הם ה-Events שכל Step משגר,
+והם שקובעים את הצעד הבא. קווים מקווקווים = מסלולי ולידציה/נסיון-חוזר.</p>
+
+<div class="wrap">
+<svg viewBox="0 0 1000 800" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="context-stroke"/>
+    </marker>
+  </defs>
+
+  <!-- Start -->
+  <ellipse class="startshape" cx="500" cy="40" rx="120" ry="26"/>
+  <text class="label" x="500" y="45">StartEvent (query)</text>
+
+  <!-- validate_query -->
+  <path class="edge" d="M500,66 L500,102"/>
+  <rect class="step" x="360" y="104" width="280" height="62" rx="12"/>
+  <text class="label" x="500" y="130">1 · validate_query</text>
+  <text class="small" x="500" y="150">קלט ריק? ארוך מדי?</text>
+
+  <!-- invalid -> stop -->
+  <path class="edge retry" d="M360,135 C250,135 210,135 178,135"/>
+  <text class="cond" x="268" y="126">קלט לא תקין</text>
+  <rect class="stop" x="40" y="110" width="136" height="50" rx="25"/>
+  <text class="label" x="108" y="132">StopEvent</text>
+  <text class="small" x="108" y="150">הודעת שגיאה</text>
+
+  <!-- route -->
+  <path class="edge" d="M500,166 L500,208"/>
+  <text class="event" x="565" y="192">QueryReadyEvent</text>
+  <rect class="step" x="345" y="210" width="310" height="66" rx="12"/>
+  <text class="label" x="500" y="237">2 · route — LLM Router</text>
+  <text class="small" x="500" y="257">LLMSingleSelector: סמנטי או מובנה?</text>
+
+  <!-- to retrieve (semantic, right side in RTL reading = drawn left) -->
+  <path class="edge" d="M420,276 C350,320 300,340 275,368"/>
+  <text class="event" x="298" y="322">SemanticSearchEvent</text>
+
+  <!-- to structured -->
+  <path class="edge" d="M580,276 C650,320 700,340 725,368"/>
+  <text class="event" x="712" y="322">StructuredSearchEvent</text>
+
+  <!-- retrieve -->
+  <rect class="step" x="115" y="370" width="320" height="86" rx="12"/>
+  <text class="label" x="275" y="398">3א · retrieve</text>
+  <text class="small" x="275" y="418">Retriever מול Pinecone (top-k)</text>
+  <text class="small" x="275" y="436">SimilarityPostprocessor — סינון לפי score</text>
+
+  <!-- retry self loop -->
+  <path class="edge retry" d="M115,400 C40,400 40,470 115,445"/>
+  <text class="cond" x="62" y="378">אין תוצאות /</text>
+  <text class="cond" x="62" y="393">ביטחון נמוך</text>
+  <text class="cond" x="62" y="490">ניסוח מחדש + הרחבה</text>
+  <text class="cond" x="62" y="505">(פעם אחת)</text>
+
+  <!-- structured_search -->
+  <rect class="step" x="565" y="370" width="320" height="86" rx="12"/>
+  <text class="label" x="725" y="398">3ב · structured_search</text>
+  <text class="small" x="725" y="418">LLM בונה StructuredQuerySpec</text>
+  <text class="small" x="725" y="436">שליפה מ-extracted_knowledge.json</text>
+
+  <!-- structured fallback to retrieve -->
+  <path class="edge retry" d="M565,440 C480,470 430,455 437,430"/>
+  <text class="cond" x="498" y="480">אין תוצאות מובנות → fallback סמנטי</text>
+
+  <!-- synthesize_semantic -->
+  <path class="edge" d="M275,456 L275,540"/>
+  <text class="event" x="275" y="505">NodesReadyEvent</text>
+  <rect class="step" x="115" y="542" width="320" height="80" rx="12"/>
+  <text class="label" x="275" y="570">4א · synthesize_semantic</text>
+  <text class="small" x="275" y="590">Response Synthesizer (compact)</text>
+  <text class="small" x="275" y="607">אזהרת ביטחון-נמוך אם צריך</text>
+
+  <!-- synthesize_structured -->
+  <path class="edge" d="M725,456 L725,540"/>
+  <text class="event" x="725" y="505">StructuredResultsEvent</text>
+  <rect class="step" x="565" y="542" width="320" height="80" rx="12"/>
+  <text class="label" x="725" y="570">4ב · synthesize_structured</text>
+  <text class="small" x="725" y="590">Cohere מנסח תשובה מהפריטים</text>
+  <text class="small" x="725" y="607">רשימות / עדכני-ביותר / טווחי זמן</text>
+
+  <!-- to stop -->
+  <path class="edge" d="M275,622 C275,690 380,712 448,718"/>
+  <path class="edge" d="M725,622 C725,690 620,712 552,718"/>
+  <ellipse class="stop" cx="500" cy="725" rx="150" ry="34"/>
+  <text class="label" x="500" y="722">StopEvent</text>
+  <text class="small" x="500" y="740">תשובה + מסלול + מקורות</text>
+
+  <!-- state note -->
+  <rect x="40" y="640" width="180" height="92" rx="10" fill="none" stroke="var(--muted)" stroke-dasharray="3 4"/>
+  <text class="small" x="130" y="663">Context.store (State):</text>
+  <text class="small" x="130" y="681">original_query</text>
+  <text class="small" x="130" y="697">retries</text>
+  <text class="small" x="130" y="713">route</text>
+</svg>
+</div>
+
+<div class="legend">
+  <span><span class="chip" style="background:var(--step);border-color:var(--step-border)"></span>Step</span>
+  <span><span class="chip" style="background:var(--event);border-color:var(--event-border)"></span>Start / Event</span>
+  <span><span class="chip" style="background:var(--stop);border-color:var(--stop-border)"></span>StopEvent</span>
+  <span><span class="chip" style="background:var(--warn);border-color:var(--warn-border)"></span>מסלול ולידציה / נסיון חוזר</span>
+</div>
+</body>
+</html>
